@@ -807,4 +807,216 @@ Con esto ya tendríamos el FTP habilitado para usarse.
 
 El último apartado del proyecto será la creación de una aplicación de tareas en **PostgreSQL y PHP** con el objetivo de tener un seguimiento de las tareas o incidencias de los técnicos. Todos los archivos serán incluidos en su [repositorio](https://github.com/sepp30000/CRUD).
 
+### Creación de la BBDD
 
+#### Levantar la infraestructura 
+
+Como en los casos del Sistema de almacenamiento, se usará **Docker** para crear la infraestructura del CRUD. 
+
+El primer paso es crear el **Dockerfile** de la imagen de *apache:php* utilizada con el objetivo de habilitar el PDO.
+
+```bash
+FROM php:apache
+# Instala el módulo de PDO para realizar el CRUD con PDO
+RUN apt-get update && apt-get install -y libpq-dev \
+    && docker-php-ext-install pdo pdo_pgsql
+```
+
+Ahora creada la imagen, se crea el **docker-compose**
+
+```bash
+version: '3.5'
+# Aunque salta que la version es vieja, funciona bien
+services:
+# La BBDD
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    environment:
+# Nos es recomendable estas credenciales pero se pueden cambiar
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - postgres:/var/lib/postgresql/data
+# Redirección de puertos
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres
+    restart: unless-stopped
+# PGAdmin, similar a PHPmyAdmin
+  pgadmin:
+    container_name: pgadmin_container
+    image: dpage/pgadmin4
+# Similar al caso de postgre, no es recomendable estas credenciales
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+# Redirección de puertos
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - postgres
+    restart: unless-stopped
+# Creación del contenedor php-apache
+  php:
+    container_name: php_container
+# Se construye a partir del Dockerfile    
+    build:
+      context: .
+      dockerfile: Dockerfile
+# Volumen que permite trabajar con la carpeta php dentro del contenedor
+    volumes:
+      - ./php:/var/www/html
+# Redirección de puertos
+    ports:
+      - "8080:80"
+    networks:
+      - postgres
+    restart: unless-stopped
+
+networks:
+  postgres:
+    driver: bridge
+
+volumes:
+  postgres:
+  pgadmin:
+```
+
+#### Configurar PGAdmin e insertar la BBDD
+
+Con esto ya podemos levantar los contenedores e ir a la dirección ip para ver si se puede acceder a *PGAdmin*.
+
+```bash
+docker compose up -d
+```
+
+
+![alt image](Capturas/iniciar-pgadmin.png)
+
+Dentro de PgAdmin insertamos las credenciales y añadimos el servidor de PostgreSQL.
+
+![alt image](Capturas/Conexionpgadmin.png)
+
+Una vez conectado del servidor de Postgres, usamos el archivo **SQL**
+para utilizar nuestra BBDD
+
+```sql
+CREATE database Empresa;
+
+-- Tabla de usuarios (técnicos)
+CREATE TABLE Usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(30) NOT NULL,
+    apellido_1 VARCHAR(50) NOT NULL,
+    apellido_2 VARCHAR(50) NOT NULL
+);
+
+-- Tabla de clientes
+CREATE TABLE Cliente (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL
+);
+
+-- Tabla de fotocopiadoras
+CREATE TABLE Fotocopiadora (
+    id SERIAL PRIMARY KEY,
+    modelo VARCHAR(100) NOT NULL,
+    numero_serie VARCHAR(100) NOT NULL UNIQUE,
+    cliente_id INT REFERENCES Cliente(id)
+);
+
+-- Tabla de estados
+CREATE TABLE Estados (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE
+);
+
+-- Tabla de tareas de reparación
+CREATE TABLE Tareas (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(100) NOT NULL,
+    descripcion TEXT NOT NULL,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_vencimiento DATE,
+    estado_id INT REFERENCES Estados(id),
+    fotocopiadora_id INT REFERENCES Fotocopiadora(id),
+    tecnico_id INT REFERENCES Usuarios(id)
+);
+
+
+-- Insercción de datos
+INSERT INTO Usuarios (nombre, apellido_1, apellido_2) VALUES
+('Juan', 'Pérez', 'González'),
+('María', 'García', 'Rodríguez'),
+('Carlos', 'Rodríguez', 'López'),
+('Ana', 'Martínez', 'Hernández'),
+('Luis', 'Hernández', 'Martín');
+
+INSERT INTO Cliente (nombre) VALUES
+('Empresa ABC'),
+('Instituto XYZ'),
+('Hospital Central'),
+('Biblioteca Municipal'),
+('Universidad Nacional');
+
+INSERT INTO Fotocopiadora (modelo, numero_serie, cliente_id) VALUES
+('HP LaserJet 1010', 'SN1234567890', 1),
+('Canon iR 1024', 'SN0987654321', 2),
+('Epson EcoTank L3150', 'SN1122334455', 3),
+('Brother DCP-L2550DW', 'SN6677889900', 4),
+('Samsung Xpress M2070', 'SN4433221100', 5);
+
+INSERT INTO Estados (nombre) VALUES
+('pendiente'),
+('en progreso'),
+('completada');
+
+INSERT INTO Tareas (titulo, descripcion, fecha_vencimiento, estado_id, fotocopiadora_id, tecnico_id) VALUES
+('Revisar cabezal de impresión', 'La impresora no imprime correctamente, revisar el cabezal.', '2024-06-30', 1, 1, 1),
+('Cambio de tóner', 'La fotocopiadora requiere un cambio de tóner.', '2024-07-15', 2, 2, 2),
+('Reparar bandeja de papel', 'La bandeja de papel está atascada y necesita reparación.', '2024-07-20', 1, 3, 3),
+('Actualizar firmware', 'Actualizar el firmware de la fotocopiadora.', '2024-08-01', 2, 4, 4),
+('Reemplazo de rodillo', 'El rodillo de la fotocopiadora está desgastado y necesita reemplazo.', '2024-08-10', 1, 5, 5);
+```
+
+#### Creación del CRUD
+
+Ya insertada la BBDD, se programará el php con el objetivo de crear un CRUD.
+
+Primeramente, se creará la conexión PDO.
+
+```php
+# Config.php
+<?php
+require 'config.php';
+# creación de la conexión pdo
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+#    echo "Conexión exitosa a la base de datos";
+} catch (PDOException $e) {
+    echo 'Error de conexión: ' . $e->getMessage();
+    die();
+}
+?>
+
+# Conexión.php
+<?php
+require 'config.php';
+# creación de la conexión pdo
+try {
+    $pdo = new PDO($dsn, $user, $pass, $options);
+    echo "Conexión exitosa a la base de datos";
+} catch (PDOException $e) {
+    echo 'Error de conexión: ' . $e->getMessage();
+    die();
+}
+?>
+```
+
+![alt image](Capturas/conexionphp.png)
