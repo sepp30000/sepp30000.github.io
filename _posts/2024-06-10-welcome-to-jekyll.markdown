@@ -424,3 +424,82 @@ Y finalmente se prueba la configuración
 
 ---
 
+## Sistema de almacenamiento
+
+Terminada la parte de la red, llega la parte del almacenamiento. La empresa se le ha ofrecido una solución de almacenamiento interna por diversas razones:
+
+- Tener una backup interno de los que se suba en la nube. Aunque la empresa tiene contratada una solución de almacenamiento en la nube, quiere poder realizar copias de seguridad de sus datos cuando ellos quieran.
+
+- Las fotocopiadoras multifunción que reparan los técnicos utilizan para el escaneo diferentes opciones de almacenamiento (correo, ftp, pendrive...) y quieren realizar pruebas con ellas puesto que dependiendo donde vayan los equipos pueden usar opciones diferentes.
+
+Con estás razones expuestas por el cliente se le ofrecen dos opciones:
+
+- La creación de un servidor web **NGINX** que ofrezca un **WebDav** alojado en el servidor.
+
+- Un servidor FTPS alojado en el servidor.
+
+Estos dos servicios serán creados en docker con el objetivo de que puedan ser movidos al servidor de backup en caso de fallo.
+
+### Instalación de Docker
+
+El primer paso será la instalación de Docker en el servidor. Esto permite la creación de contenedores donde se podrán alojar los diferentes servicios que se van a ir alojando dentro del servidor.
+
+**Esta instalación se realizará en Ubuntu Server 24.04**
+
+1. Conexión por ssh
+
+```bash
+ssh sepp@192.168.11.11
+```
+
+2. Añadir clave oficial y repositorio oficial de **Docker**
+ 
+```bash
+# Añadir clave GPG oficial de docker:
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+```bash
+# Añadir repositorio oficial a APT
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+```
+
+3. Instalación de Docker
+
+```bash
+# Docker y sus plugins incluido compose
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+4. Inicio de servicio
+
+```bash
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+
+5. Hacer que no pida sudo cada vez que trabajamos con docker
+
+```bash
+sudo usermod -aG docker sepp
+newgrp docker
+```
+
+6. Probar funcionamiento
+
+```bash
+docker run hello-world
+```
+
+![alt image](Capturas/Docker-funciona.png)
+
+![alt image](Capturas/docker%20sin%20sudo.png)
+
