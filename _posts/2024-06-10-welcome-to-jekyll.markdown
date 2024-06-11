@@ -749,3 +749,62 @@ Ya levantado el contenedor, en este caso es en MACOSX, desde el finder nos dirig
 
 ![alt image](Capturas/webdav4.png)
 
+### FTP
+
+Ahora llega el momento del **FTP**, en este caso se va a realizar un FTPs también usando *Docker*. El repositorio se encuentra ubicado en el siguiente [enlace](https://github.com/sepp30000/FTP).
+
+Todo comienza con la creación de los certificados para en la máquina del servidor con el objetivo de que desde la creación de un volumen sean los mismos para el docker como el servidor
+
+```bash
+sudo su
+mkdir -p /etc/ssl/private
+openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048
+openssl req -x509 -nodes -newkey rsa:2048 -sha256 -keyout \
+    /etc/ssl/private/pure-ftpd.pem \
+    -out /etc/ssl/private/pure-ftpd.pem
+chmod 600 /etc/ssl/private/*.pem
+```
+
+El siguiente paso será crear el *docker-compose* del servidor FTP y levantarlo
+
+```bash
+services:
+  ftpd_server:
+    image: stilliard/pure-ftpd
+    container_name: pure-ftpd
+    ports:
+    # Redirección de puertos
+      - "21:21"
+      - "30000-30009:30000-30009"
+    volumes: 
+      # Creación del volumen del ftp
+      - "/home/sepp/ftps/ftp:/home/sepp/"
+      # Certificados
+      - "/etc/ssl/private/:/etc/ssl/private/"
+    environment:
+      FTP_USER_NAME: sepp
+      FTP_USER_PASS: mipass
+      FTP_USER_HOME: /home/sepp
+
+    restart: always
+```
+
+```bash
+docker compose up -d
+```
+
+Ahora desde Filezilla se comprueba el funcionamiento.
+
+![alt image](Capturas/FTP.png)
+
+Nos aparecerá el certificado reconociéndolo. 
+
+![alt image](Capturas/Certificado.png)
+
+Con esto ya tendríamos el FTP habilitado para usarse.
+
+## CRUD en Postgres
+
+El último apartado del proyecto será la creación de una aplicación de tareas en **PostgreSQL y PHP** con el objetivo de tener un seguimiento de las tareas o incidencias de los técnicos. Todos los archivos serán incluidos en su [repositorio](https://github.com/sepp30000/CRUD).
+
+
