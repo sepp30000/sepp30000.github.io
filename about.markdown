@@ -16,8 +16,8 @@ permalink: /Acerca de/
 
 
 [jekyll-organization]: https://github.com/jekyll
-## Esta es la web del proyecto final de ASIR. El resto de repositorios son:
-- Proyecto: [Enlace](https://github.com/sepp30000/Proyecto_Publico)
-- Webdav: [Enlace](https://github.com/sepp30000/WEBDAV)
-- FTP: [Enlace](https://github.com/sepp30000/FTP)
-- CRUD: [Enlace](https://github.com/sepp30000/CRUD)
+### Esta es la web del proyecto final de ASIR. El resto de repositorios son:
+#### Proyecto: [Enlace](https://github.com/sepp30000/Proyecto_Publico)
+#### Webdav: [Enlace](https://github.com/sepp30000/WEBDAV)
+#### FTP: [Enlace](https://github.com/sepp30000/FTP)
+#### CRUD: [Enlace](https://github.com/sepp30000/CRUD)
