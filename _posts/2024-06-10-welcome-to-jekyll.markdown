@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Proyecto Final"
+title:  "Proyecto Final (Completo)"
 date:   2024-06-09 02:33:18 +0200
 categories: jekyll update
 ---
