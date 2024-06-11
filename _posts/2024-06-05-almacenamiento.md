@@ -1,6 +1,7 @@
 ---
 layout: post
-title:  "Welcome to Jekyll!"
+title:  "Sistema de almacenamiento"
+date:   2024-06-04 02:33:18 +0200
 ---
 
 # Welcome
