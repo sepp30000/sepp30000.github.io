@@ -29,7 +29,7 @@ github_username:  sepp30000
 
 # Build settings
 #theme: minima
-theme: jekyll-theme-hacker
+theme: jekyll-theme-clean-blog
 plugins:
   - jekyll-feed
 
