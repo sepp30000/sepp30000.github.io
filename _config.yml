@@ -22,8 +22,8 @@ title: Proyecto Final de ASIR José Ramón Peris
 email: peris30000@gmail.com
 description: | #>- # this means to ignore newlines until "baseurl:"
    Esta es la web del proyecto final de ASIR.
-baseurl: "https://github.com/sepp30000/Proyecto_Publico" # the subpath of your site, e.g. /blog
-url: "https://github.com/sepp30000/Proyecto_Publico" # the base hostname & protocol for your site, e.g. http://example.com
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: sepp30000
 github_username:  sepp30000
 
