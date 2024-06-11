@@ -133,7 +133,7 @@ Para configurar los routers se dividirá en dos partes:
 
 - Configuración de la **DMZ**, donde se alojará los servidores y comprende el apartado de comuncicación entre los dos routers y la redirección de puertos.
 
-1. Creación de las VLANs
+#### Creación de las VLANs
 
 Cada departamento de la empresa va a tener su propia red:
 
@@ -215,7 +215,7 @@ Finalmente se configura para que todas las interfaces internas salgan por la que
 add action=masquerade chain=srcnat out-interface=ether1 
 ```
 
-2. Conexión entre routers
+#### Conexión entre routers
 
 Ahora que está creada la red interna, el siguiente objetivo la conexión entre el **router-salida** y **router-DMZ**.
 
@@ -251,7 +251,7 @@ add gateway=192.168.10.1
 set servers=8.8.8.8,1.1.1.1
 ```
 
-3. Port-Forwarding
+#### Port-Forwarding
 
 Ahora que los routers se comunican, llega el momento de la redirección de puertos. El objetivo es que desde fuera de la red interna no se pueda acceder a la DMZ. Por lo tanto, el **Port-forwarding** es una gran opción.
 
@@ -323,7 +323,7 @@ Ahora que están los routers configurados y totalmente funcionales, llega el mom
 
 La VPN elegida para esta ocasión es **Wireguard**. **Wireguard** es una VPN creada en 2015, de código abierto y bastante popular en la comunidad. Una de las principales razones por las que hemos elegido **Wireguard** es la integración de esta VPN dentro de Mikrotik de manera nativa dentro de su S.O. *RouterOS* dando la fácilidad de configuración dentro del router. Dicho esto comienza la configuración.
 
-1. Actualizar el Router y creación de la interfaz de Wireguard
+#### Actualizar el Router y creación de la interfaz de Wireguard
 
 El primer paso será realizar una actualización del router. Para eso comienza en:
 
@@ -354,7 +354,7 @@ Después de tener el sistema operativo actualizado, tocará crear la interfaz de
 
 Con esto ya estaría creada la interfaz de **Wireguard**
 
-2. Configuración del Firewall
+#### Configuración del Firewall
 
 Continua con la configuración del firewall del router con el objetivo de que no solo se pueda entrar a nuestra red interna vía VPN.
 
@@ -368,7 +368,7 @@ Continua con la configuración del firewall del router con el objetivo de que no
 /ip/firewall/nat add chain=srcnat action=masquerade out-interface=wg0
 ```
 
-3. Creción de la peer
+#### Creción de la peer
 
 Ahora es el momento de la creación de la parte de *peer*. La primera parte será descargar [el cliente de wireguard](https://www.wireguard.com/install/) (En este caso el cliente de MACOSX). Después de instalar la aplicación, hay que hacer click en **crear un tunel vacio**, después se dentro de esta opción el nombre de la interfaz será el de la VPN "wg0" y se copia la clave pública.
 
@@ -390,7 +390,7 @@ Después de configurar la Peer se generá un código QR que se puede utilizar en
 
 ![alt image](Capturas/Wireguard%20QR.png)
 
-4. Configuración del cliente
+#### Configuración del cliente
 
 Finalmente falta la configuración del cliente. 
 
@@ -446,13 +446,13 @@ El primer paso será la instalación de Docker en el servidor. Esto permite la c
 
 **Esta instalación se realizará en Ubuntu Server 24.04**
 
-1. Conexión por ssh
+#### Conexión por ssh
 
 ```bash
 ssh sepp@192.168.11.11
 ```
 
-2. Añadir clave oficial y repositorio oficial de **Docker**
+#### Añadir clave oficial y repositorio oficial de **Docker**
  
 ```bash
 # Añadir clave GPG oficial de docker:
@@ -472,28 +472,28 @@ echo \
 sudo apt update
 ```
 
-3. Instalación de Docker
+#### Instalación de Docker
 
 ```bash
 # Docker y sus plugins incluido compose
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-4. Inicio de servicio
+#### Inicio de servicio
 
 ```bash
 sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
-5. Hacer que no pida sudo cada vez que trabajamos con docker
+#### Hacer que no pida sudo cada vez que trabajamos con docker
 
 ```bash
 sudo usermod -aG docker sepp
 newgrp docker
 ```
 
-6. Probar funcionamiento
+#### Probar funcionamiento
 
 ```bash
 docker run hello-world
@@ -502,4 +502,250 @@ docker run hello-world
 ![alt image](Capturas/Docker-funciona.png)
 
 ![alt image](Capturas/docker%20sin%20sudo.png)
+
+### WebDAV
+
+Ahora que docker es completamente funcional, es el momento de centrarse en la instalación de los servicios de almacenamiento. El primer servicio instalado será WebDAV. El protocolo WebDAV permite guardar, copiar, editar o compartir archivos de manera rápida. De manera similar a Samba o FTP. WebDAV tiene soporte multiplataforma y muestra los archivos dentro de un directorio como si de un archivo local se tratase.
+
+Para montar este sistema de almacenamiento se usará NGINX, un servidor web muy utilizado y de código abierto. El primer paso será el montaje de la imagen del NGINX.
+
+#### Configuración
+
+**Dockerfile**
+```bash
+# Imagen base utlizada
+FROM debian:10.6-slim
+
+# Argumento de uid y gid usados
+ARG UID=${UID:-1000}
+ARG GID=${GID:-1000}
+
+# Actualización de los repositorios, instalación de NGINX y utilidades necesarias más la eliminación de las listas de repositorios 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+                    nginx \
+                    nginx-extras \
+                    apache2-utils && \
+                    rm -rf /var/lib/apt/lists
+
+# Modifica el UID y el GID de la carpeta www-data que almacena el WebDav
+RUN usermod -u $UID www-data && groupmod -g $GID www-data
+
+
+VOLUME /media
+
+# Exposición del puerto 80
+EXPOSE 80
+
+# Copia el archivo de configuración creado a dentro del contenedor
+COPY webdav.conf /etc/nginx/conf.d/default.conf
+RUN rm /etc/nginx/sites-enabled/*
+
+# Mueve el script creado a la raíz y le da permisos de ejecución
+COPY entrypoint.sh /
+RUN chmod +x entrypoint.sh
+
+# Ejecuta el script y NGINX
+CMD /entrypoint.sh && nginx -g "daemon off;"
+```
+
+**docker-compose.yml**
+```bash
+services:
+  webdav:
+    # Nombre del contenedor
+    container_name: webdav
+    # Nombre de la imagen o image id los dos funcionan
+    image: seppwebdav:latest
+    # Exposición de puertos
+    ports:
+      - 80:80
+    # Volumenes creados
+    volumes:
+      - $HOME/docker/webdav:/media
+    # Usuarios y contraseña
+    environment:
+      - USERNAME=paco
+      - PASSWORD=12345
+      - UID=1000
+      - GID=1000
+      - TZ=Europe/Madrid
+    labels:
+    # Opciones de traefik. Un balanceador de carga y proxy inverso
+      - traefik.backend=webdav
+      # Aquí si saliera fuera se pondría el dominio
+      - traefik.frontend.rule=Host:localhost
+      - traefik.docker.network=web
+      # Reenvio de puertos
+      - traefik.port=80
+      # Habilita que lo gestiona trafic
+      - traefik.enable=true
+      # Medidas de seguridad
+      - traefik.http.middlewares.securedheaders.headers.forcestsheader=true
+      - traefik.http.middlewares.securedheaders.headers.sslRedirect=true
+      - traefik.http.middlewares.securedheaders.headers.STSPreload=true
+      - traefik.http.middlewares.securedheaders.headers.ContentTypeNosniff=true
+      - traefik.http.middlewares.securedheaders.headers.BrowserXssFilter=true
+      - traefik.http.middlewares.securedheaders.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.securedheaders.headers.stsSeconds=63072000
+      - traefik.http.middlewares.securedheaders.headers.frameDeny=true
+      - traefik.http.middlewares.securedheaders.headers.browserXssFilter=true
+      - traefik.http.middlewares.securedheaders.headers.contentTypeNosniff=true
+networks:
+  web:
+   external: true
+```
+
+**entrypoint.sh**
+
+```bash
+#!/bin/bash
+# Creación del usuario que pedimos en el compose
+if [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]
+then
+        htpasswd -bc /etc/nginx/htpasswd $USERNAME $PASSWORD
+else
+    echo Using no auth.
+        sed -i 's%auth_basic "Restricted";% %g' /etc/nginx/conf.d/default.conf
+        sed -i 's%auth_basic_user_file htpasswd;% %g' /etc/nginx/conf.d/default.conf
+fi
+# Cambio de propietario de /media
+mediaowner=$(ls -ld /media | awk '{print $3}')
+if [ "$mediaowner" != "www-data" ]
+then
+    chown -R www-data:www-data /media
+fi
+```
+
+**webdav.conf**
+```bash
+dav_ext_lock_zone zone=a:10m;
+
+server {
+  set $webdav_root "/media/";
+  # Necesitaran usuario y contraseña y la ubicación de esta
+  auth_basic "Restricted";
+  auth_basic_user_file /etc/nginx/htpasswd;
+  dav_ext_lock zone=a;
+
+  location / {
+
+        root                    $webdav_root;
+        error_page              599 = @propfind_handler;
+        error_page              598 = @delete_handler;
+        error_page              597 = @copy_move_handler;
+        open_file_cache         off;
+
+        access_log /var/log/nginx/webdav_access.log;
+        error_log /var/log/nginx/webdav_error.log debug;
+
+        send_timeout            3600;
+        client_body_timeout     3600;
+        keepalive_timeout       3600;
+        lingering_timeout       3600;
+        client_max_body_size    10G;
+
+        if ($request_method = PROPFIND) {
+                return 599;
+        }
+
+        if ($request_method = PROPPATCH) { 
+                add_header      Content-Type 'text/xml';
+                return          207 '<?xml version="1.0"?><a:multistatus xmlns:a="DAV:"><a:response><a:propstat><a:status>HTTP/1.1 200 OK</a:status></a:propstat></a:response></a:multistatus>';
+        }
+
+        if ($request_method = MKCOL) { 
+                rewrite ^(.*[^/])$ $1/ break;
+        }
+
+        if ($request_method = DELETE) {
+                return 598;
+        }
+
+        if ($request_method = COPY) {
+                return 597;
+        }
+
+        if ($request_method = MOVE) {
+                return 597;
+        }
+
+        dav_methods             PUT MKCOL;
+        dav_ext_methods         OPTIONS LOCK UNLOCK;
+        create_full_put_path    on;
+        min_delete_depth        0;
+        dav_access              user:rw group:rw all:rw;
+
+        autoindex               on;
+        autoindex_exact_size    on;
+        autoindex_localtime     on;
+
+        if ($request_method = OPTIONS) {
+                add_header      Allow 'OPTIONS, GET, HEAD, POST, PUT, MKCOL, MOVE, COPY, DELETE, PROPFIND, PROPPATCH, LOCK, UNLOCK';
+                add_header      DAV '1, 2';
+                return 200;
+        }
+  }
+  # Location establece directivas para mover, eliminar, copiar archivos
+  location @propfind_handler {
+        internal;
+
+        open_file_cache off;
+        if (!-e $webdav_root/$uri) { 
+                return 404;
+        }
+        root                    $webdav_root;
+        dav_ext_methods         PROPFIND;
+  }
+  location @delete_handler {
+        internal;
+
+        open_file_cache off;
+        if (-d $webdav_root/$uri) { 
+                rewrite ^(.*[^/])$ $1/ break;
+        }
+        root                    $webdav_root;
+        dav_methods             DELETE;
+  }
+  location @copy_move_handler {
+        internal;
+
+        open_file_cache off;
+        if (-d $webdav_root/$uri) { 
+                more_set_input_headers 'Destination: $http_destination/';
+                rewrite ^(.*[^/])$ $1/ break;
+        }
+        root                    $webdav_root;
+        dav_methods             COPY MOVE;
+  }
+}
+```
+
+Con todo esto ya está preparada la configuración estos archivos serán guardados en un repositorio aparte [Repositorio Webdav](https://github.com/sepp30000/WEBDAV) para poder guardarlo por si acaso.
+
+#### Levantar Docker
+
+Ahora que está preparado el entorno se puede levantar el servicio de web, para ello se creará la imagen del contenedor:
+
+```bash
+# Se hace dentro de la carpeta que está el dockerfile
+docker build -t seppwebdav:latest
+```
+Y ya se puede levantar el contenedor
+
+```bash
+docker compose up -d
+```
+
+Y comprobamos que el contenedor está levantado
+
+![alt image](Capturas/webdav1.png)
+
+#### Comprobar funcionamiento
+
+Ya levantado el contenedor, en este caso es en MACOSX, desde el finder nos dirigimos a **ir-conectarse a un servidor**. Desde allí ponemos la dirección de la puerta de enlace de nuestra red (ya que por la redirección de puertos nos mandará al servidor) y ya estaría preparado el WebDAV.
+
+![alt image](Capturas/webdav3.png)
+
+![alt image](Capturas/webdav4.png)
 
