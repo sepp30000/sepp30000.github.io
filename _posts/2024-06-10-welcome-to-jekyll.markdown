@@ -100,4 +100,221 @@ Aquí nos encontramos con el presupuesto que le hemos realizado a la empresa con
 |-|-|-|-|
 |-|-|**Total: 15872,87€ IVA Incuido**|-|
 
+## Montaje de la infraestructura de red
+
+El primer paso a realizar es el montaje de la infraestructura de la red. Este consistirá en los siguientes puntos:
+
+- El montaje de un sistema de routers **Mikrotik** que se encargue del *enrutamiento de la infraestructura de la empresa.*
+
+- Implantación de un servicio de **DNSMasq** responsable de *la asignación de los dns y el dhcp.*
+
+- Configuración del **portforwarding** de los routers, buscando *una mayor seguridad y la redirección de los servicios a nuestra DMZ.*
+
+- Compra y preparación de equipos para almacen, técnicos así como administración y dmz.
+
+
+### Configuración de la red
+
+Ahora toca la configuración de la red. En este caso se realizará la configuración con unos routers de la marca **Mikrotik** que utilizan el sistema operativo *Router OS* que permite una gran configuración y personalización.
+
+Para ello se realiza la configuración de los **2 routers** que se han comprado.
+
+- Uno será el router de entrada/salida de internet.
+
+- El otro será un router será el encargado de separar a la  **DMZ** del resto de equipos. Haciendo una separación clara entre ellas.
+
+A parte de todo esto, se creará diferentes VLANs que aportará una mayor seguridad, eficiencia y mejor gestión de las redes.
+
+### Configuración de los routers
+
+Para configurar los routers se dividirá en dos partes:
+
+- Configuración de la **red interna de la empresa**, en la que entrará todo el apartado de las *VLAN* y la salida a internet de los equipos.
+
+- Configuración de la **DMZ**, donde se alojará los servidores y comprende el apartado de comuncicación entre los dos routers y la redirección de puertos.
+
+1. Creación de las VLANs
+
+Cada departamento de la empresa va a tener su propia red:
+
+| Nombre | Dirección | Mascara | 
+|:------:|:--------:|:-------------:|
+|Administración y finanzas|192.168.23.0|24|
+|Técnicos|192.168.22.0|24|
+|Almacen|192.168.21.0|24|
+
+Para ello se hará uso de las VLANs. Esto permite crear redes lógicas independientes dentro de la misma red física.
+
+Todo esto se realizará en el Router-Entrada. La conexión entre routers será para más adelante. Para crear las VLANs lo primero será la configuración de los switches.
+
+| Nombre | Configuración |
+|:------:|:--------:|
+|Switch Técnicos|![alt image](Capturas/Switch%20Técnicos.png)|
+|Switch Administración|![alt image](Capturas/Switch%20administración.png)|
+|Switch Almacen|![alt image](Capturas/Switch%20Almacen.png)|
+|Switch Enlace|![alt image](Capturas/Siwtch%20enlace.png)|
+
+
+
+Ahora en el router se crean las VLANs
+
+```bash
+/interface/vlan
+add name=tecnicos vlan-id=10 interface=ether3 
+add name=almacen vlan-id=20 interface=ether3 
+add name=administracion vlan-id=30 interface=ether3
+```
+
+![alt image](Capturas/vlan1.png)
+
+Y las interfaces de red
+
+```bash
+/ip/address
+add address=192.168.21.1/24 interface=tecnicos  
+add address=192.168.22.1/24 interface=almacen    
+add address=192.168.23.1/24 interface=administracion 
+```
+
+![alt image](Capturas/vlan2.png)
+
+Después de esto, los equipos pueden tener ip fija o que un servidor dhcp les asigne una dirección ip. Mikrotik dispone de uno y su configuración es:(Solo se enseña la de uno, el resto es igual)
+
+```bash
+/ip/dhcp-server
+setup
+
+Select interface to run DHCP server on 
+
+dhcp server interface:  
+administracion     almacen     ether1     ether2     ether3     ether4     ether5     ether6     ether7     ether8     tecnicos   
+dhcp server interface: tecnicos 
+Select network for DHCP addresses 
+
+dhcp address space: 192.168.21.0/24  
+Select gateway for given network 
+
+gateway for dhcp network: 192.168.21.1 
+Select pool of ip addresses given out by DHCP server 
+
+addresses to give out: 192.168.21.2-192.168.21.254, 
+Select DNS servers 
+
+dns servers: 8.8.8.8,1.1.1.1            
+Select lease time 
+
+lease time: 1800 
+```
+
+![alt image](Capturas/VLAN3.png)
+
+Finalmente se configura para que todas las interfaces internas salgan por la que está conectada a internet(**ether1**).
+
+```bash
+/ip/firewall/nat
+add action=masquerade chain=srcnat out-interface=ether1 
+```
+
+2. Conexión entre routers
+
+Ahora que está creada la red interna, el siguiente objetivo la conexión entre el **router-salida** y **router-DMZ**.
+
+En router-entrada se crea interfaz que conecte con DMZ
+
+```bash
+/ip/address
+add address=192.168.10.1/24 interface=ether2
+```
+
+En router-DMZ se crea la interfaz que conecte con entrada
+
+```bash
+/ip/address
+add address=192.168.10.2/24 interface=ether1
+```
+
+La salida a internet de manera similar a entrada,además de crear la red interna de la DMZ
+
+```bash
+/ip/firewall/nat/
+add action=masquerade chain=srcnat out-interface=ether1
+/ip/address
+add address=192.168.11.1/24 interface=ether2
+```
+
+Y la puerta de enlace entre los routers más los dns
+
+```bash
+/ip/route
+add gateway=192.168.10.1
+/ip/dns
+set servers=8.8.8.8,1.1.1.1
+```
+
+3. Port-Forwarding
+
+Ahora que los routers se comunican, llega el momento de la redirección de puertos. El objetivo es que desde fuera de la red interna no se pueda acceder a la DMZ. Por lo tanto, el **Port-forwarding** es una gran opción.
+
+```bash
+# 192.168.21.1
+/ip/firewall/nat
+# WebDAV
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=80 action=dst-nat to-addresses=192.168.10.2 to-ports=80
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=443 action=dst-nat to-addresses=192.168.10.2 to-ports=443
+# Postgre
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=5432 action=dst-nat to-addresses=192.168.10.2 to-ports=5432
+# FTP
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=21 action=dst-nat to-addresses=192.168.10.2 to-ports=21
+# Puertos dinamicos
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=30000-31000 action=dst-nat to-addresses=192.168.10.2 to-ports=30000-31000
+# Teamvierwer
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5938
+# ssh
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=22 action=dst-nat to-addresses=192.168.10.2 to-ports=22
+# Pgadmin
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5050
+# PHP-Apache
+add chain=dstnat dst-address=192.168.21.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=8080
+
+# 192.168.22.1
+/ip/firewall/nat
+# WebDAV
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=80 action=dst-nat to-addresses=192.168.10.2 to-ports=80
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=443 action=dst-nat to-addresses=192.168.10.2 to-ports=443
+# Postgre
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=5432 action=dst-nat to-addresses=192.168.10.2 to-ports=5432
+# FTP
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=21 action=dst-nat to-addresses=192.168.10.2 to-ports=21
+# Puertos dinamicos
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=30000-31000 action=dst-nat to-addresses=192.168.10.2 to-ports=30000-31000
+# Teamvierwer
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5938
+# ssh
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=22 action=dst-nat to-addresses=192.168.10.2 to-ports=22
+# Pgadmin
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5050
+# PHP-Apache
+add chain=dstnat dst-address=192.168.22.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=8080
+
+# 192.168.23.1
+/ip/firewall/nat
+# WebDAV
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=80 action=dst-nat to-addresses=192.168.10.2 to-ports=80
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=443 action=dst-nat to-addresses=192.168.10.2 to-ports=443
+# Postgre
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=5432 action=dst-nat to-addresses=192.168.10.2 to-ports=5432
+# FTP
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=21 action=dst-nat to-addresses=192.168.10.2 to-ports=21
+# Puertos dinamicos
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=30000-31000 action=dst-nat to-addresses=192.168.10.2 to-ports=30000-31000
+# Teamvierwer
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5938
+# ssh
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=22 action=dst-nat to-addresses=192.168.10.2 to-ports=22
+# Pgadmin
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=5050
+# PHP-Apache
+add chain=dstnat dst-address=192.168.23.1 protocol=tcp dst-port=5938 action=dst-nat to-addresses=192.168.10.2 to-ports=8080
+```
+
 
