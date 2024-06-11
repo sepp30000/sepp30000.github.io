@@ -22,7 +22,7 @@ title: Proyecto Final de ASIR José Ramón Peris
 email: peris30000@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Esta es la web del proyecto final de ASIR. El resto de repositorios son:
-  "Proyecto: www.google.es"
+  -> "Proyecto: www.google.es"
   "Webdav:"
   "FTP:"
   "CRUD:"
