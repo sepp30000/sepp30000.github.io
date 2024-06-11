@@ -49,6 +49,7 @@ categories: jekyll update
     1. [Creación de la BBDD](#creación-de-la-bbdd)
     1. [Programación en PHP](#programación-en-php)
 <br>
+
 ## Introducción
 
 En este proyecto se va a realizar la infraestructura de una empresa, en este caso será una empresa encargada de suministros escolares, material de oficina y reprografía (Gestión y reparación de máquinas fotocopiadoras).
