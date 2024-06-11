@@ -28,7 +28,8 @@ twitter_username: sepp30000
 github_username:  sepp30000
 
 # Build settings
-theme: minima
+#theme: minima
+theme: jekyll-theme-clean-blog
 plugins:
   - jekyll-feed
 
