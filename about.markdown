@@ -18,7 +18,7 @@ You can find the source code for Jekyll at GitHub:
 [jekyll-organization]: https://github.com/jekyll
 
 - Esta es la web del proyecto final de ASIR. El resto de repositorios son:
-- Proyecto: [Google](www.google.es)
-- Webdav: [Google](www.google.es)
-- FTP: [Google](www.google.es)
-- CRUD: [Google](www.google.es)
+- Proyecto: [Enlace](https://github.com/sepp30000/Proyecto_Publico)
+- Webdav: [Enlace](https://github.com/sepp30000/WEBDAV)
+- FTP: [Enlace](https://github.com/sepp30000/FTP)
+- CRUD: [Enlace]((https://github.com/sepp30000/CRUD)
