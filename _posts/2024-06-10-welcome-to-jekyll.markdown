@@ -1020,3 +1020,463 @@ try {
 ```
 
 ![alt image](Capturas/conexionphp.png)
+
+### Programación en PHP
+
+Ahora es el momento la web principal donde se encuentran los tiquets ya insertados anteriormente en la BBDD.
+
+```php
+?php
+require 'config/config.php'; // Incluye de conexión a la base de datos
+require 'config/conexion.php';
+
+// Consulta a la bbdd de la tarea
+$sql = "SELECT Tareas.*, Estados.nombre AS estado_nombre, Fotocopiadora.modelo AS fotocopiadora_modelo, Usuarios.nombre AS tecnico_nombre, Usuarios.apellido_1, Usuarios.apellido_2 
+        FROM Tareas
+        JOIN Estados ON Tareas.estado_id = Estados.id
+        JOIN Fotocopiadora ON Tareas.fotocopiadora_id = Fotocopiadora.id
+        JOIN Usuarios ON Tareas.tecnico_id = Usuarios.id";
+
+$stmt = $pdo->query($sql);
+
+
+$tareas = $stmt->fetchAll();
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--link de bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="./css/style.css">
+    <title>CRUD PROYECTO</title>
+</head>
+<body>
+    <br>
+    <div class="container">
+        <h1 class="text-center">GESTOR DE TAREAS</h1>
+    </div>
+    <br>
+    <div class="container">
+        <!-- Tabla bootstrap -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Titulo</th>
+                    <th scope="col">Descripción</th>
+                    <th scope="col">Fecha de creación</th>
+                    <th scope="col">Fecha de vencimiento</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Fotocopiadora</th>
+                    <th scope="col">Técnico</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Abrimos el php -->
+                <?php foreach ($tareas as $tarea): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($tarea['id']); ?></td>
+                    <td><?php echo htmlspecialchars($tarea['titulo']); ?></td>
+                    <td><?php echo htmlspecialchars($tarea['descripcion']); ?></td>
+                    <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($tarea['fecha_creacion']))); ?></td>
+                    <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($tarea['fecha_vencimiento']))); ?></td>
+                    <td><?php echo htmlspecialchars($tarea['estado_nombre']); ?></td>
+                    <td><?php echo htmlspecialchars($tarea['fotocopiadora_modelo']); ?></td>
+                    <td><?php echo htmlspecialchars($tarea['tecnico_nombre'] . ' ' . $tarea['apellido_1'] . ' ' . $tarea['apellido_2']); ?></td>
+                    <td>
+                        <div class="d-flex flex-row">
+                                <a href="editar.php?id=<?php echo $tarea['id']; ?>" class="btn btn-warning custom-btn">Editar</a>
+                                <a href="crud/borrardatos.php?id=<?php echo $tarea['id']; ?>" class="btn btn-danger">Eliminar</a>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                
+            </tbody>
+        </table>
+        <a href="insertar.php" class="btn btn-success">Agregar Incidencia</a>
+    </div>
+    <!-- javascript bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"
+        integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"
+        integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF"
+        crossorigin="anonymous"></script>
+</body>
+</html>
+```
+<br>
+
+![alt image](Capturas/index.png)
+
+Le sigue el formulario de **Agregar Incidencias**
+
+*Insertar.php*
+
+```php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agregar Tarea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mt-5 mb-4">Agregar Tarea</h1>
+        <form action="../crud/insertardatos.php" method="POST"> 
+            <div class="mb-3">
+                <label class="form-label">Título</label>
+                <input type="text" class="form-control" name="titulo">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" name="descripcion" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fecha de creación</label>
+                <input type="date" class="form-control" name="fecha_creacion" value="<?php echo date('Y-m-d'); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fecha de vencimiento</label>
+                <input type="date" class="form-control" name="fecha_vencimiento">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select class="form-select" name="estado">
+                    <option selected>Seleccionar estado</option>
+                    <?php
+                        // Conexión a la base de datos
+                        require_once("./config/config.php");
+
+                        try {
+                            $pdo = new PDO($dsn, $user, $pass, $options);
+                            
+                            // Select estados
+                            $sql = "SELECT * FROM Estados";
+                            $stmt = $pdo->query($sql);
+                            
+                                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='".$row['id']."'>".$row['nombre']."</option>";
+                            }
+                        } catch (PDOException $e) {
+                            echo "Error: " . $e->getMessage();
+                        }
+                    ?>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Técnico asignado</label>
+                <select class="form-select" name="tecnico_id">
+                    <option selected>Seleccionar técnico</option>
+                    <?php
+                        // Conexión a la bbdd
+                        require_once("./config/config.php");
+
+                        try {
+                            $pdo = new PDO($dsn, $user, $pass, $options);
+                            
+                            // Consulta para obtener los técnicos de la base de datos
+                            $sql = "SELECT * FROM Usuarios";
+                            $stmt = $pdo->query($sql);
+                            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='".$row['id']."'>".$row['nombre']." ".$row['apellido_1']." ".$row['apellido_2']."</option>";
+                            }
+                        } catch (PDOException $e) {
+                            echo "Error: " . $e->getMessage();
+                        }
+                    ?>
+                </select>
+            </div>
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-danger">Agregar</button>
+                <a href="../index.php" class="btn btn-dark">Regresar</a>
+            </div>
+        </form>
+    </div>
+    <footer class="footer mt-5">
+        <div class="text-center">
+            <p>&copy; 2023 José Ramón Peris. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+```
+
+*insertardatos.php*
+
+```php
+<?php
+include("../config/config.php");
+include("../config/conexion.php");
+try {
+    $pdo->beginTransaction();
+
+    $sql_tareas = "INSERT INTO Tareas (titulo, descripcion, fecha_creacion, fecha_vencimiento, estado_id, fotocopiadora_id, tecnico_id) VALUES (:titulo, :descripcion, :fecha_creacion, :fecha_vencimient>
+    $stmt_tareas = $pdo->prepare($sql_tareas);
+    $stmt_tareas->bindParam(':titulo', $_POST['titulo']);
+    $stmt_tareas->bindParam(':descripcion', $_POST['descripcion']);
+    $stmt_tareas->bindParam(':fecha_creacion', $_POST['fecha_creacion']);
+    $stmt_tareas->bindParam(':fecha_vencimiento', $_POST['fecha_vencimiento']);
+    $stmt_tareas->bindParam(':estado_id', $_POST['estado_id']);
+    $stmt_tareas->bindParam(':fotocopiadora_id', $_POST['fotocopiadora_id']);
+    $stmt_tareas->bindParam(':tecnico_id', $_POST['tecnico_id']);
+    $stmt_tareas->execute();
+
+    // Mantiene la transacción
+    $pdo->commit();
+    echo '<script>alert("Datos insertados correctamente"); window.location.href="../index.php";</script>';
+} catch (PDOException $e) {
+    // Si falla hace rollback
+    $pdo->rollBack();
+    echo '<script>alert("Error al insertar datos: ' . $e->getMessage() . '"); window.location.href="../formularios/insertar_tarea.php";</script>';
+}
+
+// Cierra la conexión
+$pdo = null;
+?>
+```
+
+![alt image](Capturas/Insert.png)
+
+El update es muy similar
+
+*editar.php*
+
+```bash
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Editar Tarea</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../estilos/insertar.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mt-5 mb-4">Editar Tarea</h1>
+        <form action="./crud/editardatos.php" method="POST"> 
+            <?php
+            // Archivos de conexión
+            include("./config/config.php");
+            include("./config/conexion.php");
+
+            $id = $_GET['id'];
+
+            try {
+                // Consultar la base de datos de la bbddd
+                $sql = "SELECT * FROM Tareas WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row) {
+            ?>
+            <div class="mb-3">
+                <label class="form-label">Título</label>
+                <input type="text" class="form-control" name="titulo" value="<?php echo htmlspecialchars($row['titulo']); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" name="descripcion" rows="3"><?php echo htmlspecialchars($row['descripcion']); ?></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fecha de creación</label>
+                <input type="date" class="form-control" name="fecha_creacion" value="<?php echo htmlspecialchars($row['fecha_creacion']); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fecha de vencimiento</label>
+                <input type="date" class="form-control" name="fecha_vencimiento" value="<?php echo htmlspecialchars($row['fecha_vencimiento']); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select class="form-select" name="estado">
+                    <?php
+                        // Consultar la base de datos para obtener los estados
+                        $sql_estados = "SELECT * FROM Estados";
+                        $stmt_estados = $pdo->query($sql_estados);
+                        while ($estado = $stmt_estados->fetch(PDO::FETCH_ASSOC)) {
+                            echo "<option value='".$estado['id']."'";
+                            if ($estado['id'] == $row['estado_id']) {
+                                echo " selected";
+                            }
+                            echo ">".$estado['nombre']."</option>";
+                        }
+                    ?>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fotocopiadora</label>
+                <select class="form-select" name="fotocopiadora_id">
+                    <?php
+                        // Consultar la base de datos para obtener los modelos de fotocopiadoras
+                        $sql_fotocopiadoras = "SELECT id, modelo FROM Fotocopiadora";
+                        $stmt_fotocopiadoras = $pdo->query($sql_fotocopiadoras);
+                        while ($fotocopiadora = $stmt_fotocopiadoras->fetch(PDO::FETCH_ASSOC)) {
+                            echo '<option value="' . htmlspecialchars($fotocopiadora['id']) . '"';
+                            if ($fotocopiadora['id'] == $row['fotocopiadora_id']) {
+                                echo ' selected';
+                            }
+                            echo '>' . htmlspecialchars($fotocopiadora['modelo']) . '</option>';
+                        }
+                    ?>
+                </select>
+</div>
+            <div class="mb-3">
+                <label class="form-label">Técnico asignado</label>
+                <select class="form-select" name="tecnico_id">
+                    <?php
+                        // Consultar la base de datos para obtener los técnicos
+                        $sql_tecnicos = "SELECT * FROM usuarios";
+                        $stmt_tecnicos = $pdo->query($sql_tecnicos);
+                        while ($tecnico = $stmt_tecnicos->fetch(PDO::FETCH_ASSOC)) {
+                            echo '<option value="' . htmlspecialchars($tecnico['id']) . '"';
+                            if ($tecnico['id'] == $row['tecnico_id']) {
+                                echo ' selected';
+                            }
+                            echo ">" . htmlspecialchars($tecnico['nombre'] . " " . $tecnico['apellido_1']) . "</option>";
+                    }
+                        ?>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fecha</label>
+                <input type="date" class="form-control" name="fecha" value="<?php echo isset($row['fecha']) ? htmlspecialchars($row['fecha']) : ''; ?>">
+            </div>
+            <input type="hidden" name="id" value="<?php echo $id; ?>">
+            <div class="container">
+                <button type="submit" class="btn btn-danger">Actualizar</button>
+                <a href="../index.php" class="btn btn-dark">Regresar</a>
+            </div>
+            <?php
+                } else {
+                    // Si no se encontraron datos, mostrar un mensaje de error
+                    echo "No se encontraron datos de la tarea para editar.";
+                }
+            } catch (PDOException $e) {
+                // Si hay un error en la consulta, mostrar el mensaje de error
+                echo "Error: " . $e->getMessage();
+            }
+            ?>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous>
+    <br>
+    <footer class="footer">
+        <div class="text-center">
+            <p>&copy; 2023 José Ramón Peris. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>
+```
+
+*editardatos.php*
+
+```php
+<?php
+include("../config/config.php");
+include("../config/conexion.php");
+
+// Recoge los datos del formulario
+$id = $_POST['id'];
+$titulo = $_POST['titulo'];
+$descripcion = $_POST['descripcion'];
+$fecha_creacion = $_POST['fecha_creacion'];
+$fecha_vencimiento = $_POST['fecha_vencimiento'];
+$estado_id = isset($_POST['estado_id']) ? $_POST['estado_id'] : null;
+$fotocopiadora_id = $_POST['fotocopiadora_id'];
+$tecnico_id = $_POST['tecnico_id'];
+
+try {
+    $pdo->beginTransaction();
+
+    // Consulta para actualizar los datos en la tabla Tareas
+    $sql_update = "UPDATE Tareas SET 
+                  titulo = :titulo, 
+                  descripcion = :descripcion, 
+                  fecha_creacion = :fecha_creacion, 
+                  fecha_vencimiento = :fecha_vencimiento, 
+                  estado_id = :estado_id, 
+                  fotocopiadora_id = :fotocopiadora_id, 
+                  tecnico_id = :tecnico_id 
+                  WHERE id = :id";
+    $stmt_update = $pdo->prepare($sql_update);
+    $stmt_update->bindParam(':titulo', $titulo);
+    $stmt_update->bindParam(':descripcion', $descripcion);
+    $stmt_update->bindParam(':fecha_creacion', $fecha_creacion);
+    $stmt_update->bindParam(':fecha_vencimiento', $fecha_vencimiento);
+    $stmt_update->bindParam(':estado_id', $estado_id);
+    $stmt_update->bindParam(':fotocopiadora_id', $fotocopiadora_id);
+    $stmt_update->bindParam(':tecnico_id', $tecnico_id);
+    $stmt_update->bindParam(':id', $id);
+    $stmt_update->execute();
+
+    // Si funciona, guarda la transacción
+    $pdo->commit();
+    echo '<script>alert("Datos actualizados correctamente"); window.location.href="../index.php";</script>';
+} catch (PDOException $e) {
+    // Rollback en caso de error
+    $pdo->rollBack();
+    echo '<script>alert("Error al actualizar datos: ' . $e->getMessage() . '"); window.location.href="../editar.php?id='.$id.'";</script>';
+}
+
+// Cierra la conexión
+$pdo = null;
+?>
+```
+
+![alt image](Capturas/Editar.png)
+
+Y se termina con el eliminar
+
+*borrardatos.php*
+
+```bash
+<?php
+include("../config/conexion.php");
+include("../config/config.php");
+
+$id = $_GET['id'];
+
+try {
+    $pdo->beginTransaction();
+
+    // Inicia el borrado
+    $sql_tarea = "DELETE FROM Tareas WHERE id = :id";
+    $stmt_tarea = $pdo->prepare($sql_tarea);
+    $stmt_tarea->bindParam(':id', $id);
+    $stmt_tarea->execute();
+
+    // Confirma la acción
+    $pdo->commit();
+    echo '<script>alert("Tarea eliminada correctamente"); window.location.href="../index.php";</script>';
+} catch (PDOException $e) {
+    // Realiza un rollback para deshacer los cambios, en caso de fallo
+    $pdo->rollBack();
+    echo '<script>alert("Error al eliminar la tarea: ' . $e->getMessage() . '"); window.location.href="../index.php";</script>';
+}
+
+// Cierra la conexión
+$pdo = null;
+?>
+```
+
+Con esto terminaría está parte y el proyecto.
+
+## Conclusiones
+
+Llegamos al final del proyecto. Muchas gracias por haberlo seguido y espero que le sea de utlidad a quien lo pueda usar. Este proyecto tiene todavía muchas más opciones de agrandarlo con el objetivo de por ejemplo, automatizar tareas de despliegue. Cambiar el PHP por algun framework como Django o insertar un bot que haga de hombre en la DMZ... 
+
+Repito, muchas gracias por haberlo leído y espero que sigamos haciendo proyectos, más grandes y completos.
